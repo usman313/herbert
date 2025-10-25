@@ -8,6 +8,8 @@ import Map from "./ui/Map";
 import MapSource from "./ui/MapSource";
 import MapLayer from "./ui/MapLayer";
 import Button from "./ui/Button";
+import MapMarker from "./ui/MapMarker";
+import useFacilityData from "@/hooks/useFacilityData";
 
 export type Marker = {
   id: string;
@@ -44,54 +46,76 @@ export default function MapSection(props: MapSectionProps) {
             mapStyle="mapbox://styles/mapbox/streets-v9"
             initialViewState={{ longitude: 151.2093, latitude: -33.8688, zoom: 11 }}
             style={{ width: "100%", height: "100%" }}
-            interactiveLayerIds={isClustered ? ["clusters", "unclustered-point"] : ["unclustered-point"]}
+            interactiveLayerIds={isClustered ? ["clusters", "unclustered-point"] : []}
           >
             {geojson ? (
-              <MapSource
-                id="facilities"
-                type="geojson"
-                data={geojson}
-                cluster={isClustered}
-                {...(isClustered ? { clusterMaxZoom: 14, clusterRadius: 50 } : {})}
-              >
-                {isClustered ? (
-                  <>
-                    <MapLayer
-                      id="clusters"
-                      source="facilities"
-                      type="circle"
-                      filter={[">", ["get", "point_count"], 0]}
-                      paint={{
-                        "circle-color": "#3b82f6",
-                        "circle-radius": ["step", ["get", "point_count"], 14, 20, 18, 50, 22],
-                        "circle-stroke-width": 2,
-                        "circle-stroke-color": "#fff",
-                      }}
-                    />
-                    <MapLayer
-                      id="cluster-count"
-                      source="facilities"
-                      type="symbol"
-                      filter={[">", ["get", "point_count"], 0]}
-                      layout={{ "text-field": ["get", "point_count_abbreviated"], "text-size": 12 }}
-                      paint={{ "text-color": "#ffffff" }}
-                    />
-                  </>
-                ) : null}
-
-                <MapLayer
-                  id="unclustered-point"
-                  source="facilities"
-                  type="circle"
-                  {...(isClustered ? { filter: ["!", ["has", "point_count"]] as any } : {})}
-                  paint={{
-                    "circle-color": "#2563eb",
-                    "circle-radius": 6,
-                    "circle-stroke-width": 2,
-                    "circle-stroke-color": "#fff",
-                  }}
-                />
-              </MapSource>
+              isClustered ? (
+                <MapSource
+                  id="facilities"
+                  type="geojson"
+                  data={geojson}
+                  cluster={true}
+                  clusterMaxZoom={14}
+                  clusterRadius={50}
+                >
+                  <MapLayer
+                    id="clusters"
+                    source="facilities"
+                    type="circle"
+                    filter={[">", ["get", "point_count"], 0]}
+                    paint={{
+                      "circle-color": "#3b82f6",
+                      "circle-radius": ["step", ["get", "point_count"], 14, 20, 18, 50, 22],
+                      "circle-stroke-width": 2,
+                      "circle-stroke-color": "#fff",
+                    }}
+                  />
+                  <MapLayer
+                    id="cluster-count"
+                    source="facilities"
+                    type="symbol"
+                    filter={[">", ["get", "point_count"], 0]}
+                    layout={{ "text-field": ["get", "point_count_abbreviated"], "text-size": 12 }}
+                    paint={{ "text-color": "#ffffff" }}
+                  />
+                  <MapLayer
+                    id="unclustered-point"
+                    source="facilities"
+                    type="circle"
+                    filter={["!", ["has", "point_count"]] as any}
+                    paint={{
+                      "circle-color": "#2563eb",
+                      "circle-radius": 6,
+                      "circle-stroke-width": 2,
+                      "circle-stroke-color": "#fff",
+                    }}
+                  />
+                </MapSource>
+              ) : (
+                Array.isArray(geojson?.features)
+                  ? geojson.features
+                      .filter((f: any) => f?.geometry?.type === "Point")
+                      .map((f: any, idx: number) => {
+                        const coords = f.geometry.coordinates;
+                        if (!Array.isArray(coords) || coords.length < 2) return null;
+                        const [lng, lat] = coords as [number, number];
+                        const normalized = useFacilityData(f.properties ?? {});
+                        const id = normalized.id || String(idx);
+                        return (
+                          <MapMarker
+                            key={id}
+                            id={id}
+                            longitude={lng}
+                            latitude={lat}
+                            name={normalized.name}
+                            address={normalized.address}
+                            suburb={normalized.suburb}
+                            facilityType={normalized.facilityType}
+                          />
+                        );
+                      })
+                  : null
+              )
             ) : null}
           </Map>
         ) : (
