@@ -4,14 +4,15 @@ import React from "react";
 import Checkbox from "./ui/Checkbox";
 import Container from "./ui/Container";
 import Typography from "./ui/Typography";
-import Map from "react-map-gl/mapbox";
-import { Source, Layer } from "react-map-gl/mapbox";
+import Map from "./ui/Map";
+import MapSource from "./ui/MapSource";
+import MapLayer from "./ui/MapLayer";
 import Button from "./ui/Button";
 
 export type Marker = {
   id: string;
-  left: string;
-  top: string;
+  left: string; // percentage like "25%"
+  top: string; // percentage like "30%"
 };
 
 export type MapSectionProps = {
@@ -46,7 +47,7 @@ export default function MapSection(props: MapSectionProps) {
             interactiveLayerIds={isClustered ? ["clusters", "unclustered-point"] : ["unclustered-point"]}
           >
             {geojson ? (
-              <Source
+              <MapSource
                 id="facilities"
                 type="geojson"
                 data={geojson}
@@ -55,7 +56,7 @@ export default function MapSection(props: MapSectionProps) {
               >
                 {isClustered ? (
                   <>
-                    <Layer
+                    <MapLayer
                       id="clusters"
                       source="facilities"
                       type="circle"
@@ -67,7 +68,7 @@ export default function MapSection(props: MapSectionProps) {
                         "circle-stroke-color": "#fff",
                       }}
                     />
-                    <Layer
+                    <MapLayer
                       id="cluster-count"
                       source="facilities"
                       type="symbol"
@@ -78,7 +79,7 @@ export default function MapSection(props: MapSectionProps) {
                   </>
                 ) : null}
 
-                <Layer
+                <MapLayer
                   id="unclustered-point"
                   source="facilities"
                   type="circle"
@@ -90,7 +91,7 @@ export default function MapSection(props: MapSectionProps) {
                     "circle-stroke-color": "#fff",
                   }}
                 />
-              </Source>
+              </MapSource>
             ) : null}
           </Map>
         ) : (
