@@ -12,6 +12,7 @@
   "dependencies": {
     "@mapbox/mapbox-sdk": "^0.16.2",
     "@storyblok/react": "^5.4.17",
+    "gsap": "^3.13.0",
     "mapbox-gl": "^3.16.0",
     "next": "16.0.0",
     "react": "19.2.0",
