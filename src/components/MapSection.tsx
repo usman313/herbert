@@ -5,12 +5,13 @@ import Checkbox from "./ui/Checkbox";
 import Container from "./ui/Container";
 import Typography from "./ui/Typography";
 import Map from "react-map-gl/mapbox";
+import { Source, Layer } from "react-map-gl/mapbox";
 import Button from "./ui/Button";
 
 export type Marker = {
   id: string;
-  left: string; // percentage like "25%"
-  top: string; // percentage like "30%"
+  left: string;
+  top: string;
 };
 
 export type MapSectionProps = {
@@ -22,23 +23,103 @@ export type MapSectionProps = {
 export default function MapSection(props: MapSectionProps) {
   const token = process.env.MAP_BOX as string | undefined;
   const hasToken = Boolean(token && token.length > 0);
+  const [geojson, setGeojson] = React.useState<any | null>(null);
+  const [isClustered, setIsClustered] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    fetch("/data/Sports_and_recreation_facilities.geojson")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load GeoJSON"))))
+      .then(setGeojson)
+      .catch(() => setGeojson(null));
+  }, []);
 
   return (
     <div className="hidden md:flex flex-1 relative bg-linear-to-br from-blue-50 to-blue-100">
       <div id="map" className="w-full h-full relative overflow-hidden">
         {hasToken ? (
           <Map
+            key={isClustered ? "clustered" : "unclustered"}
             mapboxAccessToken={token}
             mapStyle="mapbox://styles/mapbox/streets-v9"
             initialViewState={{ longitude: 151.2093, latitude: -33.8688, zoom: 11 }}
             style={{ width: "100%", height: "100%" }}
-          />
+            interactiveLayerIds={isClustered ? ["clusters", "unclustered-point"] : ["unclustered-point"]}
+          >
+            {geojson ? (
+              <Source
+                id="facilities"
+                type="geojson"
+                data={geojson}
+                cluster={isClustered}
+                {...(isClustered ? { clusterMaxZoom: 14, clusterRadius: 50 } : {})}
+              >
+                {isClustered ? (
+                  <>
+                    <Layer
+                      id="clusters"
+                      source="facilities"
+                      type="circle"
+                      filter={[">", ["get", "point_count"], 0]}
+                      paint={{
+                        "circle-color": "#3b82f6",
+                        "circle-radius": ["step", ["get", "point_count"], 14, 20, 18, 50, 22],
+                        "circle-stroke-width": 2,
+                        "circle-stroke-color": "#fff",
+                      }}
+                    />
+                    <Layer
+                      id="cluster-count"
+                      source="facilities"
+                      type="symbol"
+                      filter={[">", ["get", "point_count"], 0]}
+                      layout={{ "text-field": ["get", "point_count_abbreviated"], "text-size": 12 }}
+                      paint={{ "text-color": "#ffffff" }}
+                    />
+                  </>
+                ) : null}
+
+                <Layer
+                  id="unclustered-point"
+                  source="facilities"
+                  type="circle"
+                  {...(isClustered ? { filter: ["!", ["has", "point_count"]] as any } : {})}
+                  paint={{
+                    "circle-color": "#2563eb",
+                    "circle-radius": 6,
+                    "circle-stroke-width": 2,
+                    "circle-stroke-color": "#fff",
+                  }}
+                />
+              </Source>
+            ) : null}
+          </Map>
         ) : (
           <div className="absolute inset-0 bg-gray-100" />
         )}
 
         <Container className="absolute top-6 right-6 bg-white px-5 py-3 rounded-xl shadow-lg border border-gray-200 backdrop-blur-sm bg-opacity-95">
-          <Checkbox defaultChecked label={"Search as I move the map"} />
+          <div className="flex items-center gap-3">
+            <Checkbox defaultChecked label={"Search as I move the map"} />
+            <div className="h-6 w-px bg-gray-200" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant={isClustered ? "white" : "primary"}
+                size="sm"
+                aria-pressed={!isClustered}
+                onClick={() => setIsClustered(false)}
+              >
+                Unclustered
+              </Button>
+              <Button
+                variant={isClustered ? "primary" : "white"}
+                size="sm"
+                aria-pressed={isClustered}
+                onClick={() => setIsClustered(true)}
+              >
+                Clustered
+              </Button>
+            </div>
+          </div>
         </Container>
 
         <div className="absolute bottom-6 right-6 flex flex-col gap-2">
