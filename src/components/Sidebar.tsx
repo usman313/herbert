@@ -5,6 +5,7 @@ import SearchBar from "./SearchBar";
 import FacilityCard, { FacilityTag } from "./FacilityCard";
 import Typography from "./ui/Typography";
 import Container from "./ui/Container";
+import { gsap } from "gsap";
 
 export type Facility = {
   id: string;
@@ -26,6 +27,17 @@ export type SidebarProps = {
 
 export default function Sidebar(props: SidebarProps) {
   const { facilities, selectedId, onSelect, search, onSearch, filter, onFilter } = props;
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!listRef.current) return;
+    const items = listRef.current.querySelectorAll(".facility-card");
+    gsap.fromTo(
+      items,
+      { autoAlpha: 0, y: 16 },
+      { autoAlpha: 1, y: 0, duration: 0.8, delay: 0.1, ease: "power3.out", stagger: 0.1 }
+    );
+  }, [facilities.length]);
 
   return (
     <div className="w-full md:w-[480px] lg:w-[520px] bg-white shadow-xl flex flex-col">
@@ -38,7 +50,7 @@ export default function Sidebar(props: SidebarProps) {
       </Container>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <Container className="p-6 lg:p-8 space-y-4">
+        <div className="p-6 lg:p-8 space-y-4" ref={listRef}>
           {facilities.map((f) => (
             <FacilityCard
               key={f.id}
@@ -50,7 +62,7 @@ export default function Sidebar(props: SidebarProps) {
               onClick={() => onSelect(f.id)}
             />
           ))}
-        </Container>
+        </div>
       </div>
     </div>
   );
