@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Sidebar, { Facility } from "@/components/Sidebar";
@@ -9,8 +8,60 @@ export default function Home() {
   const [selectedFacilityId, setSelectedFacilityId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState("All types of facilities");
+  const [homeData, setHomeData] = React.useState<any | null>(null);
 
-  const facilities: Facility[] = [
+  React.useEffect(() => {
+    let isMounted = true;
+    fetch("/api/home", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to fetch /api/home"))))
+      .then((data) => {
+        if (!isMounted) return;
+        console.log("Home API response:", data);
+        setHomeData(data);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.warn("Failed to load home API:", err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  function normalizeFacilitiesFromHome(data: any): Facility[] {
+    const candidates =
+      (data && (data.facilities || data.items || data.list)) ||
+      data?.story?.content?.facilities ||
+      data?.data?.facilities ||
+      [];
+
+    if (!Array.isArray(candidates)) return [];
+    return candidates.map((item: any, index: number): Facility => {
+      const id = String(item?.id ?? item?._uid ?? index + 1);
+      const typeLabel = String(
+        item?.typeLabel ?? item?.type ?? item?.category ?? "Facility"
+      );
+      const title = String(item?.title ?? item?.name ?? "Facility");
+      const addressLine1 =
+        item?.addressLines?.[0] ?? item?.address ?? item?.street ?? "";
+      const addressLine2 =
+        item?.addressLines?.[1] ?? item?.suburb ?? item?.city ?? "";
+      const tagsRaw = Array.isArray(item?.tags) ? item.tags : [];
+      const tags = tagsRaw.map((t: any) => ({
+        iconClass: String(t?.iconClass ?? "fas fa-tag"),
+        label: String(t?.label ?? t ?? "Tag"),
+      }));
+      return {
+        id,
+        typeLabel,
+        title,
+        addressLines: [addressLine1, addressLine2].filter(Boolean),
+        tags,
+      };
+    });
+  }
+
+  const staticFacilities: Facility[] = [
     {
       id: "1",
       typeLabel: "Park",
@@ -67,6 +118,8 @@ export default function Home() {
     },
   ];
 
+  const apiFacilities = React.useMemo(() => normalizeFacilitiesFromHome(homeData), [homeData]);
+  const facilities: Facility[] = apiFacilities.length > 0 ? apiFacilities : staticFacilities;
   const filteredFacilities = facilities.filter((f) => {
     const matchesSearch = [f.title, ...f.addressLines]
       .join(" ")
