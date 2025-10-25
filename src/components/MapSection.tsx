@@ -11,17 +11,7 @@ import Button from "./ui/Button";
 import MapMarker from "./ui/MapMarker";
 import useFacilityData from "@/hooks/useFacilityData";
 
-export type Marker = {
-  id: string;
-  left: string; // percentage like "25%"
-  top: string; // percentage like "30%"
-};
-
-export type MapSectionProps = {
-  markers: Marker[];
-  selectedMarkerId?: string | null;
-  onSelectMarker?: (id: string) => void;
-};
+export type MapSectionProps = {};
 
 export default function MapSection(props: MapSectionProps) {
   const token = process.env.MAP_BOX as string | undefined;
