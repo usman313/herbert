@@ -1,4 +1,3 @@
-import Home from "@/app/page";
 import { apiPlugin, storyblokInit, getStoryblokApi } from "@storyblok/react/rsc";
 
 let isInitialized = false;
@@ -8,9 +7,7 @@ function init() {
 	storyblokInit({
 		accessToken: process.env.STORY_BLOK_ACCESS_TOKEN,
 		use: [apiPlugin],
-		components: {
-      home: Home
-    },
+        components: {},
 	});
 	isInitialized = true;
 }
