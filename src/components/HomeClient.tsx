@@ -2,7 +2,8 @@
 
 import React from "react";
 import Sidebar, { Facility } from "@/components/Sidebar";
-import MapSection, { Marker } from "@/components/MapSection";
+import MapSection from "@/components/MapSection";
+import useFacilityData from "@/hooks/useFacilityData";
 
 type HomeClientProps = {
   homeData: any | null;
@@ -12,6 +13,7 @@ export default function HomeClient({ homeData }: HomeClientProps) {
   const [selectedFacilityId, setSelectedFacilityId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState("All types of facilities");
+  const [geoFacilities, setGeoFacilities] = React.useState<Facility[]>([]);
 
   React.useEffect(() => {
     console.log("Home API response:", homeData);
@@ -50,65 +52,33 @@ export default function HomeClient({ homeData }: HomeClientProps) {
     });
   }
 
-  const staticFacilities: Facility[] = [
-    {
-      id: "1",
-      typeLabel: "Park",
-      title: "Lyons Road Park",
-      addressLines: ["Corner of Lyons Road and Lambert Street", "Camperdown, 2050"],
-      tags: [
-        { iconClass: "fas fa-wifi", label: "Wifi" },
-        { iconClass: "fas fa-utensils", label: "Kitchen" },
-        { iconClass: "fas fa-parking", label: "Free Parking" },
-      ],
-    },
-    {
-      id: "2",
-      typeLabel: "Sports Center",
-      title: "Victoria Park Pool",
-      addressLines: ["Corner of City Road and Broadway", "Camperdown, 2050"],
-      tags: [
-        { iconClass: "fas fa-swimming-pool", label: "Pool" },
-        { iconClass: "fas fa-shower", label: "Showers" },
-        { iconClass: "fas fa-lock", label: "Lockers" },
-      ],
-    },
-    {
-      id: "3",
-      typeLabel: "Park",
-      title: "Sydney Park",
-      addressLines: ["Sydney Park Road", "Alexandria, 2015"],
-      tags: [
-        { iconClass: "fas fa-bicycle", label: "Bike Path" },
-        { iconClass: "fas fa-dog", label: "Dog Park" },
-        { iconClass: "fas fa-tree", label: "Playground" },
-      ],
-    },
-    {
-      id: "4",
-      typeLabel: "Tennis Court",
-      title: "Redfern Tennis Courts",
-      addressLines: ["Redfern Street", "Redfern, 2016"],
-      tags: [
-        { iconClass: "fas fa-calendar-check", label: "Booking" },
-        { iconClass: "fas fa-lightbulb", label: "Night Lights" },
-        { iconClass: "fas fa-parking", label: "Parking" },
-      ],
-    },
-    {
-      id: "5",
-      typeLabel: "Basketball Court",
-      title: "Surry Hills Basketball",
-      addressLines: ["Crown Street", "Surry Hills, 2010"],
-      tags: [
-        { iconClass: "fas fa-basketball-ball", label: "Outdoor" },
-        { iconClass: "fas fa-users", label: "Free Access" },
-      ],
-    },
-  ];
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/data/Sports_and_recreation_facilities.geojson")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load GeoJSON"))))
+      .then((geojson) => {
+        if (cancelled) return;
+        const features = Array.isArray(geojson?.features) ? geojson.features : [];
+        const mapped: Facility[] = features
+          .filter((f: any) => f?.geometry?.type === "Point")
+          .map((f: any, idx: number) => {
+            const normalized = useFacilityData(f.properties ?? {});
+            const id = normalized.id || String(idx);
+            const typeLabel = normalized.facilityType || "Sport Facility";
+            const title = normalized.name || "Location";
+            const addressLines = [normalized.address, normalized.suburb].filter(Boolean);
+            return { id, typeLabel, title, addressLines, tags: [] } as Facility;
+          });
+        setGeoFacilities(mapped);
+      })
+      .catch(() => setGeoFacilities([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const apiFacilities = React.useMemo(() => normalizeFacilitiesFromHome(homeData), [homeData]);
-  const facilities: Facility[] = apiFacilities.length > 0 ? apiFacilities : staticFacilities;
+  const facilities: Facility[] = apiFacilities.length > 0 ? apiFacilities : geoFacilities;
   const filteredFacilities = facilities.filter((f) => {
     const matchesSearch = [f.title, ...f.addressLines]
       .join(" ")
@@ -118,19 +88,6 @@ export default function HomeClient({ homeData }: HomeClientProps) {
       filter === "All types of facilities" || f.typeLabel === filter;
     return matchesSearch && matchesFilter;
   });
-
-  const markers: Marker[] = [
-    { id: "m1", left: "25%", top: "30%" },
-    { id: "m2", left: "45%", top: "25%" },
-    { id: "m3", left: "55%", top: "45%" },
-    { id: "m4", left: "35%", top: "55%" },
-    { id: "m5", left: "65%", top: "35%" },
-    { id: "m6", left: "50%", top: "60%" },
-    { id: "m7", left: "70%", top: "50%" },
-    { id: "m8", left: "40%", top: "70%" },
-    { id: "m9", left: "60%", top: "65%" },
-    { id: "m10", left: "30%", top: "40%" },
-  ];
 
   return (
     <div className="bg-gray-50 antialiased">
@@ -144,11 +101,7 @@ export default function HomeClient({ homeData }: HomeClientProps) {
           filter={filter}
           onFilter={setFilter}
         />
-        <MapSection
-          markers={markers}
-          selectedMarkerId={null}
-          onSelectMarker={() => {}}
-        />
+        <MapSection />
       </div>
     </div>
   );

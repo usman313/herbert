@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { gsap } from "gsap";
 import { Marker, Popup } from "react-map-gl/mapbox";
 import Typography from "./Typography";
 import useHover from "@/hooks/useHover";
@@ -18,12 +19,25 @@ export type MapMarkerProps = {
 export default function MapMarker(props: MapMarkerProps) {
   const { id, longitude, latitude, name, address, suburb, facilityType } = props;
   const { ref, isHovered, eventProps } = useHover<HTMLDivElement>();
+  const bubbleRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!bubbleRef.current) return;
+    gsap.fromTo(
+      bubbleRef.current,
+      { autoAlpha: 0, scale: 0.6, y: 10 },
+      { autoAlpha: 1, scale: 1, y: 0, duration: 0.9, delay: 0.15, ease: "power3.out" }
+    );
+  }, []);
 
   return (
     <>
       <Marker key={id} longitude={longitude} latitude={latitude} anchor="bottom">
         <div
-          ref={ref}
+          ref={(el: HTMLDivElement | null) => {
+            (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
+            bubbleRef.current = el;
+          }}
           className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white cursor-pointer"
           {...eventProps}
         >
